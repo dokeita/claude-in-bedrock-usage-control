@@ -4,7 +4,6 @@ import gzip
 import json
 import os
 from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 
 import boto3
 
@@ -31,6 +30,9 @@ DENY_POLICY_DOC = json.dumps({
 
 table = dynamodb.Table(TABLE_NAME)
 
+# 処理済みファイル管理用のキー
+PROCESSED_KEY = "__processed_files__"
+
 
 def handler(event, context):
     now = datetime.now(timezone.utc)
@@ -39,10 +41,15 @@ def handler(event, context):
         f"[handler] start_time={start_time.isoformat()}, end_time={now.isoformat()}"
     )
 
-    # S3 invocation log から直接ユーザー毎のトークン数を集計
-    user_tokens = aggregate_from_s3_logs(start_time)
+    # 処理済みファイル一覧を取得
+    processed_files = get_processed_files()
+    print(f"[handler] already processed: {len(processed_files)} files")
+
+    # S3 invocation log から未処理ファイルのみ集計
+    user_tokens, new_files = aggregate_from_s3_logs(start_time,
+                                                    processed_files)
     print(
-        f"[handler] aggregate result: {len(user_tokens)} users, data={user_tokens}"
+        f"[handler] aggregate result: {len(user_tokens)} users, new_files={len(new_files)}, data={user_tokens}"
     )
 
     # DynamoDB 更新 + 閾値チェック
@@ -50,10 +57,35 @@ def handler(event, context):
         print(f"[handler] update_and_check user={user_id}, tokens={tokens}")
         update_and_check(user_id, tokens)
 
+    # 処理済みファイルを記録
+    if new_files:
+        save_processed_files(processed_files | new_files)
 
-def aggregate_from_s3_logs(start_time):
-    """S3 の Bedrock invocation log からユーザー毎のトークン数を直接集計"""
+
+def get_processed_files():
+    """DynamoDB から処理済みファイル一覧を取得"""
+    try:
+        resp = table.get_item(Key={"userId": PROCESSED_KEY})
+        item = resp.get("Item", {})
+        return set(item.get("files", []))
+    except Exception as e:
+        print(f"[handler] Error getting processed files: {e}")
+        return set()
+
+
+def save_processed_files(files):
+    """DynamoDB に処理済みファイル一覧を保存（直近1000件のみ保持）"""
+    recent_files = sorted(files)[-1000:]
+    try:
+        table.put_item(Item={"userId": PROCESSED_KEY, "files": recent_files})
+    except Exception as e:
+        print(f"[handler] Error saving processed files: {e}")
+
+
+def aggregate_from_s3_logs(start_time, processed_files):
+    """S3 の Bedrock invocation log から未処理ファイルのみユーザー毎のトークン数を集計"""
     user_tokens = {}
+    new_files = set()
 
     account_id = boto3.client("sts").get_caller_identity()["Account"]
     region = os.environ.get("AWS_REGION", "us-east-1")
@@ -72,15 +104,22 @@ def aggregate_from_s3_logs(start_time):
         print(f"[s3] Scanning bucket={BUCKET_NAME}, prefix={full_prefix}")
         try:
             paginator = s3.get_paginator("list_objects_v2")
-            for page in paginator.paginate(Bucket=BUCKET_NAME, Prefix=full_prefix):
+            for page in paginator.paginate(Bucket=BUCKET_NAME,
+                                           Prefix=full_prefix):
                 for obj in page.get("Contents", []):
+                    key = obj["Key"]
+                    if key in processed_files:
+                        continue
+                    if key.endswith("permission-check"):
+                        continue
                     file_count += 1
-                    process_log_file(obj["Key"], user_tokens)
+                    process_log_file(key, user_tokens)
+                    new_files.add(key)
         except Exception as e:
             print(f"[s3] Error listing S3 objects: {e}")
 
-    print(f"[s3] Processed {file_count} log files, result: {user_tokens}")
-    return user_tokens
+    print(f"[s3] Processed {file_count} new log files, result: {user_tokens}")
+    return user_tokens, new_files
 
 
 def process_log_file(key, user_tokens):
@@ -186,5 +225,5 @@ def notify_warning(user_arn, total_tokens):
     )
 
 
-if __name__ == '__main__':
-    handler(None, None)
+if __name__ == "__main__":
+    handler({}, None)
