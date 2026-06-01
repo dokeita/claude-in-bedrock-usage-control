@@ -33,11 +33,16 @@ npx cdk bootstrap
 ## デプロイ
 
 ```bash
-npx cdk deploy \
+DEPLOYED_ENV=prod npx cdk deploy \
   -c alert_email=admin@example.com \
-  -c monthly_token_limit=100000000 \
-  -c monthly_dollar_limit=30
+  -c monthly_token_limit=100000000
 ```
+
+### 環境変数
+
+| 環境変数 | デフォルト | 説明 |
+|----------|-----------|------|
+| `DEPLOYED_ENV` | `dev` | リソース名のプレフィックス（例: `prod-bedrock-aggregator`） |
 
 ### パラメータ
 
@@ -45,7 +50,6 @@ npx cdk deploy \
 |-----------|-----------|------|
 | `alert_email` | (なし) | 通知先メールアドレス |
 | `monthly_token_limit` | 100,000,000 | 月次トークン上限 (input + output) |
-| `monthly_dollar_limit` | 30.0 | 月次コスト上限 (USD) |
 
 ## プロジェクト構成
 
