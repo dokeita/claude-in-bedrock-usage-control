@@ -31,7 +31,8 @@ class BedrockUsageControlStack(Stack):
         log_bucket = s3.Bucket(
             self, "BedrockLogBucket",
             bucket_name=f"{env_prefix}-bedrock-invocation-logs",
-            removal_policy=RemovalPolicy.RETAIN,
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
             versioned=True,
             lifecycle_rules=[
                 s3.LifecycleRule(
@@ -40,6 +41,12 @@ class BedrockUsageControlStack(Stack):
                 ),
             ],
         )
+        log_bucket.add_to_resource_policy(iam.PolicyStatement(
+            actions=["s3:PutObject"],
+            resources=[log_bucket.arn_for_objects("*")],
+            principals=[iam.ServicePrincipal("bedrock.amazonaws.com")],
+            conditions={"StringEquals": {"aws:SourceAccount": self.account}},
+        ))
 
         # --- CloudWatch Logs ---
         log_group = logs.LogGroup(
@@ -79,6 +86,7 @@ class BedrockUsageControlStack(Stack):
             handler="index.handler",
             code=lambda_.Code.from_asset("lambda/configure_logging"),
             timeout=Duration.seconds(60),
+            log_retention=logs.RetentionDays.ONE_MONTH,
         )
         configure_logging_fn.add_to_role_policy(iam.PolicyStatement(
             actions=[
@@ -113,6 +121,7 @@ class BedrockUsageControlStack(Stack):
             code=lambda_.Code.from_asset("lambda/aggregator"),
             timeout=Duration.minutes(5),
             memory_size=512,
+            log_retention=logs.RetentionDays.ONE_MONTH,
             environment={
                 "USAGE_TABLE_NAME": usage_table.table_name,
                 "LOG_BUCKET_NAME": log_bucket.bucket_name,
@@ -152,6 +161,7 @@ class BedrockUsageControlStack(Stack):
             handler="index.handler",
             code=lambda_.Code.from_asset("lambda/monthly_reset"),
             timeout=Duration.minutes(2),
+            log_retention=logs.RetentionDays.ONE_MONTH,
             environment={
                 "USAGE_TABLE_NAME": usage_table.table_name,
             },
