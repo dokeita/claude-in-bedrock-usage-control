@@ -138,10 +138,6 @@ class BedrockUsageControlStack(Stack):
             resources=["arn:aws:iam::*:user/*"],
         ))
         aggregator_fn.add_to_role_policy(iam.PolicyStatement(
-            actions=["cloudtrail:LookupEvents"],
-            resources=["*"],
-        ))
-        aggregator_fn.add_to_role_policy(iam.PolicyStatement(
             actions=["sts:GetCallerIdentity"],
             resources=["*"],
         ))
