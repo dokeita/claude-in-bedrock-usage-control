@@ -28,8 +28,8 @@ def handler(event, context):
         table.update_item(
             Key={"userId": user_id},
             UpdateExpression="SET currentInputTokens = :z, currentOutputTokens = :z, "
-                            "currentCostDollars = :zd, blocked = :f",
-            ExpressionAttributeValues={":z": 0, ":zd": 0, ":f": False},
+                            "blocked = :f, notified = :f",
+            ExpressionAttributeValues={":z": 0, ":f": False},
         )
 
     print(f"Reset {len(response.get('Items', []))} users")

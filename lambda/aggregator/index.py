@@ -213,6 +213,11 @@ def update_and_check(user_arn, tokens):
     item = response["Attributes"]
     total_tokens = int(item.get("currentInputTokens", 0)) + int(
         item.get("currentOutputTokens", 0))
+    notified = item.get("notified", False)
+
+    # 既に通知済みならスキップ
+    if notified:
+        return
 
     # 閾値チェック（トークン数のみ）
     token_exceeded = total_tokens >= TOKEN_LIMIT
@@ -220,8 +225,19 @@ def update_and_check(user_arn, tokens):
     if token_exceeded:
         block_user(user_arn)
         notify(user_arn, total_tokens)
+        mark_notified(user_arn)
     elif total_tokens >= TOKEN_LIMIT * 0.8:
         notify_warning(user_arn, total_tokens)
+        mark_notified(user_arn)
+
+
+def mark_notified(user_arn):
+    """通知済みフラグを設定"""
+    table.update_item(
+        Key={"userId": user_arn},
+        UpdateExpression="SET notified = :n",
+        ExpressionAttributeValues={":n": True},
+    )
 
 
 def block_user(user_arn):
