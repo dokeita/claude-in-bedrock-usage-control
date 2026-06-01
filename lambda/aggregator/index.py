@@ -41,15 +41,20 @@ def handler(event, context):
 
     now = datetime.now(timezone.utc)
     start_time = now - timedelta(minutes=16)
-    print(f"[handler] start_time={start_time.isoformat()}, end_time={now.isoformat()}")
+    print(
+        f"[handler] start_time={start_time.isoformat()}, end_time={now.isoformat()}"
+    )
 
     # 処理済みファイル一覧を取得
     processed_files = get_processed_files()
     print(f"[handler] already processed: {len(processed_files)} files")
 
     # S3 invocation log から未処理ファイルのみ集計
-    user_tokens, new_files = aggregate_from_s3_logs(start_time, processed_files)
-    print(f"[handler] aggregate result: {len(user_tokens)} users, new_files={len(new_files)}, data={user_tokens}")
+    user_tokens, new_files = aggregate_from_s3_logs(start_time,
+                                                    processed_files)
+    print(
+        f"[handler] aggregate result: {len(user_tokens)} users, new_files={len(new_files)}, data={user_tokens}"
+    )
 
     # DynamoDB 更新 + 閾値チェック
     for user_id, tokens in user_tokens.items():
@@ -91,17 +96,22 @@ def handle_full_scan():
 
     # DynamoDB を上書き（PUT で置き換え）
     for user_arn, tokens in user_tokens.items():
-        table.put_item(Item={
-            "userId": user_arn,
-            "currentInputTokens": tokens["input"],
-            "currentOutputTokens": tokens["output"],
-        })
+        table.put_item(
+            Item={
+                "userId": user_arn,
+                "currentInputTokens": tokens["input"],
+                "currentOutputTokens": tokens["output"],
+            })
         total = tokens["input"] + tokens["output"]
-        print(f"[full_scan] {user_arn}: input={tokens['input']}, output={tokens['output']}, total={total}")
+        print(
+            f"[full_scan] {user_arn}: input={tokens['input']}, output={tokens['output']}, total={total}"
+        )
 
     # 処理済みファイルも更新
     save_processed_files(all_files)
-    print(f"[full_scan] Done. Updated {len(user_tokens)} users, {len(all_files)} files tracked.")
+    print(
+        f"[full_scan] Done. Updated {len(user_tokens)} users, {len(all_files)} files tracked."
+    )
 
 
 def get_processed_files():
