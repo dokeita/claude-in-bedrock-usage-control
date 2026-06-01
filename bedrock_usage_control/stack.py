@@ -19,17 +19,18 @@ from constructs import Construct
 
 
 class BedrockUsageControlStack(Stack):
-    def __init__(self, scope: Construct, id: str, **kwargs):
+    def __init__(self, scope: Construct, id: str, *, env_prefix: str = "dev", **kwargs):
         super().__init__(scope, id, **kwargs)
 
         # --- Parameters (context) ---
         alert_email = self.node.try_get_context("alert_email") or ""
         monthly_token_limit = self.node.try_get_context("monthly_token_limit") or 100_000_000
-        monthly_dollar_limit = self.node.try_get_context("monthly_dollar_limit") or 30.0
+        # monthly_dollar_limit = self.node.try_get_context("monthly_dollar_limit") or 30.0
 
         # --- S3: Bedrock Invocation Logs ---
         log_bucket = s3.Bucket(
             self, "BedrockLogBucket",
+            bucket_name=f"{env_prefix}-bedrock-invocation-logs",
             removal_policy=RemovalPolicy.RETAIN,
             versioned=True,
             lifecycle_rules=[
@@ -43,7 +44,7 @@ class BedrockUsageControlStack(Stack):
         # --- CloudWatch Logs ---
         log_group = logs.LogGroup(
             self, "BedrockLogGroup",
-            log_group_name="/aws/bedrock/invocation-logs",
+            log_group_name=f"/{env_prefix}/aws/bedrock/invocation-logs",
             retention=logs.RetentionDays.THREE_MONTHS,
             removal_policy=RemovalPolicy.DESTROY,
         )
@@ -51,13 +52,14 @@ class BedrockUsageControlStack(Stack):
         # --- DynamoDB: ユーザー毎利用量 ---
         usage_table = dynamodb.Table(
             self, "UsageTable",
+            table_name=f"{env_prefix}-bedrock-usage",
             partition_key=dynamodb.Attribute(name="userId", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
             removal_policy=RemovalPolicy.DESTROY,
         )
 
         # --- SNS: アラート通知 ---
-        alert_topic = sns.Topic(self, "AlertTopic", display_name="Bedrock Usage Alert")
+        alert_topic = sns.Topic(self, "AlertTopic", topic_name=f"{env_prefix}-bedrock-usage-alert", display_name=f"{env_prefix} Bedrock Usage Alert")
         if alert_email:
             alert_topic.add_subscription(subs.EmailSubscription(alert_email))
 
@@ -72,6 +74,7 @@ class BedrockUsageControlStack(Stack):
         # --- Custom Resource Lambda: Bedrock Logging 設定 ---
         configure_logging_fn = lambda_.Function(
             self, "ConfigureLoggingFn",
+            function_name=f"{env_prefix}-bedrock-configure-logging",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=lambda_.Code.from_asset("lambda/configure_logging"),
@@ -104,6 +107,7 @@ class BedrockUsageControlStack(Stack):
         # --- 集計 Lambda ---
         aggregator_fn = lambda_.Function(
             self, "AggregatorFn",
+            function_name=f"{env_prefix}-bedrock-aggregator",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=lambda_.Code.from_asset("lambda/aggregator"),
@@ -114,7 +118,7 @@ class BedrockUsageControlStack(Stack):
                 "LOG_BUCKET_NAME": log_bucket.bucket_name,
                 "ALERT_TOPIC_ARN": alert_topic.topic_arn,
                 "MONTHLY_TOKEN_LIMIT": str(monthly_token_limit),
-                "MONTHLY_DOLLAR_LIMIT": str(monthly_dollar_limit),
+                # "MONTHLY_DOLLAR_LIMIT": str(monthly_dollar_limit),
             },
         )
         usage_table.grant_read_write_data(aggregator_fn)
@@ -143,6 +147,7 @@ class BedrockUsageControlStack(Stack):
         # --- 月初リセット Lambda ---
         reset_fn = lambda_.Function(
             self, "ResetFn",
+            function_name=f"{env_prefix}-bedrock-monthly-reset",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="index.handler",
             code=lambda_.Code.from_asset("lambda/monthly_reset"),

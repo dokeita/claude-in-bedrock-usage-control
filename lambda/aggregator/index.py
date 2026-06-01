@@ -17,10 +17,10 @@ TABLE_NAME = os.environ["USAGE_TABLE_NAME"]
 BUCKET_NAME = os.environ["LOG_BUCKET_NAME"]
 TOPIC_ARN = os.environ["ALERT_TOPIC_ARN"]
 TOKEN_LIMIT = int(os.environ["MONTHLY_TOKEN_LIMIT"])
-DOLLAR_LIMIT = float(os.environ["MONTHLY_DOLLAR_LIMIT"])
+# DOLLAR_LIMIT = float(os.environ["MONTHLY_DOLLAR_LIMIT"])
 
-# Claude Sonnet 4 pricing ($/1M tokens) - 必要に応じて変更
-PRICING = {"input": 3.0, "output": 15.0}
+# # Claude Sonnet 4 pricing ($/1M tokens) - 必要に応じて変更
+# PRICING = {"input": 3.0, "output": 15.0}
 
 DENY_POLICY_NAME = "BedrockUsageLimitDeny"
 DENY_POLICY_DOC = json.dumps({
@@ -134,31 +134,31 @@ def update_and_check(user_arn, tokens):
     """DynamoDB を更新し、閾値チェック"""
     input_tokens = tokens.get("input", 0)
     output_tokens = tokens.get("output", 0)
-    cost = (input_tokens * PRICING["input"] + output_tokens * PRICING["output"]) / 1_000_000
+    # cost = (input_tokens * PRICING["input"] + output_tokens * PRICING["output"]) / 1_000_000
 
     response = table.update_item(
         Key={"userId": user_arn},
-        UpdateExpression="ADD currentInputTokens :inp, currentOutputTokens :out, currentCostDollars :cost",
+        UpdateExpression="ADD currentInputTokens :inp, currentOutputTokens :out",
         ExpressionAttributeValues={
             ":inp": input_tokens,
             ":out": output_tokens,
-            ":cost": Decimal(str(round(cost, 6))),
+            # ":cost": Decimal(str(round(cost, 6))),
         },
         ReturnValues="ALL_NEW",
     )
     item = response["Attributes"]
     total_tokens = int(item.get("currentInputTokens", 0)) + int(item.get("currentOutputTokens", 0))
-    total_cost = float(item.get("currentCostDollars", 0))
+    # total_cost = float(item.get("currentCostDollars", 0))
 
-    # 閾値チェック
+    # 閾値チェック（トークン数のみ）
     token_exceeded = total_tokens >= TOKEN_LIMIT
-    cost_exceeded = total_cost >= DOLLAR_LIMIT
+    # cost_exceeded = total_cost >= DOLLAR_LIMIT
 
-    if token_exceeded or cost_exceeded:
+    if token_exceeded:
         block_user(user_arn)
-        notify(user_arn, total_tokens, total_cost, token_exceeded, cost_exceeded)
-    elif total_tokens >= TOKEN_LIMIT * 0.8 or total_cost >= DOLLAR_LIMIT * 0.8:
-        notify_warning(user_arn, total_tokens, total_cost)
+        notify(user_arn, total_tokens, token_exceeded=True)
+    elif total_tokens >= TOKEN_LIMIT * 0.8:
+        notify_warning(user_arn, total_tokens)
 
 
 def block_user(user_arn):
@@ -185,13 +185,13 @@ def block_user(user_arn):
         print(f"Error blocking {username}: {e}")
 
 
-def notify(user_arn, total_tokens, total_cost, token_exceeded, cost_exceeded):
+def notify(user_arn, total_tokens, token_exceeded):
     """閾値超過通知"""
     reason = []
     if token_exceeded:
         reason.append(f"トークン数: {total_tokens:,} / {TOKEN_LIMIT:,}")
-    if cost_exceeded:
-        reason.append(f"コスト: ${total_cost:.2f} / ${DOLLAR_LIMIT:.2f}")
+    # if cost_exceeded:
+    #     reason.append(f"コスト: ${total_cost:.2f} / ${DOLLAR_LIMIT:.2f}")
 
     sns.publish(
         TopicArn=TOPIC_ARN,
@@ -202,12 +202,11 @@ def notify(user_arn, total_tokens, total_cost, token_exceeded, cost_exceeded):
     )
 
 
-def notify_warning(user_arn, total_tokens, total_cost):
+def notify_warning(user_arn, total_tokens):
     """80% 警告通知"""
     sns.publish(
         TopicArn=TOPIC_ARN,
         Subject=f"[Bedrock] 利用量警告 (80%): {user_arn.split('/')[-1]}",
         Message=f"ユーザー {user_arn} の利用量が80%に達しました。\n"
-                f"トークン数: {total_tokens:,} / {TOKEN_LIMIT:,}\n"
-                f"コスト: ${total_cost:.2f} / ${DOLLAR_LIMIT:.2f}",
+                f"トークン数: {total_tokens:,} / {TOKEN_LIMIT:,}",
     )

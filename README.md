@@ -70,8 +70,9 @@ npx cdk deploy \
 
 ## コスト計算
 
-集計 Lambda は Claude Sonnet 4 の料金で計算しています（`lambda/aggregator/index.py` の `PRICING` 変数）。
-利用モデルが異なる場合は適宜変更してください。
+~~集計 Lambda は Claude Sonnet 4 の料金で計算しています（`lambda/aggregator/index.py` の `PRICING` 変数）。~~
+~~利用モデルが異なる場合は適宜変更してください。~~
+コスト計算は未対応
 
 ```python
 PRICING = {"input": 3.0, "output": 15.0}  # $/1M tokens
