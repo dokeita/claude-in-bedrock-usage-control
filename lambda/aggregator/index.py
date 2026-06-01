@@ -35,22 +35,21 @@ PROCESSED_KEY = "__processed_files__"
 
 
 def handler(event, context):
+    # full_scan モード: 当月全件スキャンしてDynamoDBを上書き
+    if event.get("full_scan"):
+        return handle_full_scan()
+
     now = datetime.now(timezone.utc)
     start_time = now - timedelta(minutes=16)
-    print(
-        f"[handler] start_time={start_time.isoformat()}, end_time={now.isoformat()}"
-    )
+    print(f"[handler] start_time={start_time.isoformat()}, end_time={now.isoformat()}")
 
     # 処理済みファイル一覧を取得
     processed_files = get_processed_files()
     print(f"[handler] already processed: {len(processed_files)} files")
 
     # S3 invocation log から未処理ファイルのみ集計
-    user_tokens, new_files = aggregate_from_s3_logs(start_time,
-                                                    processed_files)
-    print(
-        f"[handler] aggregate result: {len(user_tokens)} users, new_files={len(new_files)}, data={user_tokens}"
-    )
+    user_tokens, new_files = aggregate_from_s3_logs(start_time, processed_files)
+    print(f"[handler] aggregate result: {len(user_tokens)} users, new_files={len(new_files)}, data={user_tokens}")
 
     # DynamoDB 更新 + 閾値チェック
     for user_id, tokens in user_tokens.items():
@@ -60,6 +59,49 @@ def handler(event, context):
     # 処理済みファイルを記録
     if new_files:
         save_processed_files(processed_files | new_files)
+
+
+def handle_full_scan():
+    """当月のS3ログを全件スキャンし、DynamoDBのトークン数を上書き"""
+    now = datetime.now(timezone.utc)
+    print(f"[full_scan] Starting full scan for {now.strftime('%Y/%m')}")
+
+    account_id = boto3.client("sts").get_caller_identity()["Account"]
+    region = os.environ.get("AWS_REGION", "us-east-1")
+    base_prefix = f"AWSLogs/{account_id}/BedrockModelInvocationLogs/{region}/{now.strftime('%Y/%m/')}"
+
+    user_tokens = {}
+    all_files = set()
+    file_count = 0
+
+    try:
+        paginator = s3.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=BUCKET_NAME, Prefix=base_prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if key.endswith("permission-check"):
+                    continue
+                file_count += 1
+                process_log_file(key, user_tokens)
+                all_files.add(key)
+    except Exception as e:
+        print(f"[full_scan] Error: {e}")
+
+    print(f"[full_scan] Scanned {file_count} files, {len(user_tokens)} users")
+
+    # DynamoDB を上書き（PUT で置き換え）
+    for user_arn, tokens in user_tokens.items():
+        table.put_item(Item={
+            "userId": user_arn,
+            "currentInputTokens": tokens["input"],
+            "currentOutputTokens": tokens["output"],
+        })
+        total = tokens["input"] + tokens["output"]
+        print(f"[full_scan] {user_arn}: input={tokens['input']}, output={tokens['output']}, total={total}")
+
+    # 処理済みファイルも更新
+    save_processed_files(all_files)
+    print(f"[full_scan] Done. Updated {len(user_tokens)} users, {len(all_files)} files tracked.")
 
 
 def get_processed_files():
@@ -184,7 +226,7 @@ def update_and_check(user_arn, tokens):
 
 def block_user(user_arn):
     """IAM User に Deny ポリシーを付与"""
-    username = user_arn.split("/")[-1] if "/user/" in user_arn else None
+    username = user_arn.split("/")[-1] if "user/" in user_arn else None
     if not username:
         print(f"Cannot extract username from {user_arn}")
         return
@@ -226,4 +268,6 @@ def notify_warning(user_arn, total_tokens):
 
 
 if __name__ == "__main__":
-    handler({}, None)
+    import sys
+    event = {"full_scan": True} if "--full-scan" in sys.argv else {}
+    handler(event, None)
