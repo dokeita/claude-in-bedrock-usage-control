@@ -1,47 +1,49 @@
-<mxfile host="Electron" agent="Mozilla/5.0" version="26.0.16">
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/26.0.16 Chrome/132.0.6834.196 Electron/34.2.0 Safari/537.36" version="26.0.16">
   <diagram name="Architecture" id="arch">
-    <mxGraphModel dx="826" dy="814" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="700" math="0" shadow="0">
+    <mxGraphModel dx="1472" dy="1180" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="700" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
         <mxCell id="dev" value="&lt;b&gt;Developer&lt;/b&gt;&lt;br&gt;(IAM User)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82b366;" parent="1" vertex="1">
-          <mxGeometry x="40" y="80" width="120" height="60" as="geometry" />
+          <mxGeometry x="10" y="90" width="120" height="60" as="geometry" />
         </mxCell>
         <mxCell id="bedrock" value="&lt;b&gt;Amazon Bedrock&lt;/b&gt;&lt;br&gt;InvokeModel / Converse" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FF9900;fontColor=#ffffff;strokeColor=#FF9900;" parent="1" vertex="1">
-          <mxGeometry x="250" y="80" width="180" height="60" as="geometry" />
+          <mxGeometry x="370" y="90" width="180" height="60" as="geometry" />
         </mxCell>
         <mxCell id="s3" value="&lt;b&gt;S3 Bucket&lt;/b&gt;&lt;br&gt;Invocation Logs&lt;br&gt;(identity.arn + tokens)" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;" parent="1" vertex="1">
-          <mxGeometry x="530" y="70" width="150" height="80" as="geometry" />
+          <mxGeometry x="725" y="75" width="150" height="90" as="geometry" />
         </mxCell>
         <mxCell id="aggregator" value="&lt;b&gt;Aggregator Lambda&lt;/b&gt;&lt;br&gt;(15分毎 / full_scan)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" parent="1" vertex="1">
-          <mxGeometry x="480" y="230" width="180" height="60" as="geometry" />
+          <mxGeometry x="600" y="240" width="180" height="60" as="geometry" />
         </mxCell>
         <mxCell id="reset" value="&lt;b&gt;Monthly Reset Lambda&lt;/b&gt;&lt;br&gt;(毎月1日)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" parent="1" vertex="1">
-          <mxGeometry x="840" y="230" width="160" height="60" as="geometry" />
+          <mxGeometry x="860" y="415" width="160" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="dynamodb" value="&lt;b&gt;DynamoDB&lt;/b&gt;&lt;br&gt;ユーザー毎累計&lt;br&gt;+ 処理済みファイル追跡" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" parent="1" vertex="1">
-          <mxGeometry x="490" y="380" width="160" height="80" as="geometry" />
+        <mxCell id="dynamodb" value="&lt;b&gt;DynamoDB&lt;/b&gt;&lt;br&gt;&lt;ul&gt;&lt;li style=&quot;text-align: left;&quot;&gt;ユーザー毎のトークン数集計&lt;/li&gt;&lt;li style=&quot;text-align: left;&quot;&gt;処理済みS3オブジェクト管理&lt;/li&gt;&lt;/ul&gt;" style="shape=cylinder3;whiteSpace=wrap;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" parent="1" vertex="1">
+          <mxGeometry x="560" y="390" width="200" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="sns" value="&lt;b&gt;SNS 通知&lt;/b&gt;&lt;br&gt;(Email / 月1回)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;" parent="1" vertex="1">
-          <mxGeometry x="320" y="530" width="140" height="60" as="geometry" />
+        <mxCell id="sns" value="&lt;b&gt;SNS 通知&lt;/b&gt;&lt;br&gt;(Email)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;" parent="1" vertex="1">
+          <mxGeometry x="240" y="550" width="140" height="60" as="geometry" />
         </mxCell>
         <mxCell id="iam_deny" value="&lt;b&gt;IAM Deny Policy&lt;/b&gt;&lt;br&gt;Bedrock ブロック" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;" parent="1" vertex="1">
-          <mxGeometry x="560" y="530" width="160" height="60" as="geometry" />
+          <mxGeometry x="400" y="550" width="160" height="60" as="geometry" />
         </mxCell>
         <mxCell id="eb_agg" value="&lt;b&gt;EventBridge&lt;/b&gt;&lt;br&gt;15分毎" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;" parent="1" vertex="1">
-          <mxGeometry x="250" y="230" width="130" height="60" as="geometry" />
+          <mxGeometry x="875" y="240" width="130" height="60" as="geometry" />
         </mxCell>
         <mxCell id="eb_reset" value="&lt;b&gt;EventBridge&lt;/b&gt;&lt;br&gt;毎月1日" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF2CC;strokeColor=#D6B656;" parent="1" vertex="1">
-          <mxGeometry x="840" y="380" width="160" height="60" as="geometry" />
+          <mxGeometry x="875" y="330" width="130" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" parent="1" source="dev" target="bedrock" edge="1">
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="dev" target="Z1Fb-K9sI5tcGLu9Mw_k-1" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e2" value="Model Invocation Logging" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;" parent="1" source="bedrock" target="s3" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e3" value="identity.arn + tokenCount" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" parent="1" source="s3" target="aggregator" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e3" value="identity.arn&lt;div&gt;tokenCount&lt;/div&gt;&lt;div&gt;を参照・集計&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;entryPerimeter=0;" parent="1" source="aggregator" target="s3" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="940" y="190" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" parent="1" source="eb_agg" target="aggregator" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -49,11 +51,18 @@
         <mxCell id="e5" value="ADD tokens" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" parent="1" source="aggregator" target="dynamodb" edge="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e6" value="80% 警告" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;" parent="1" source="aggregator" target="sns" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e6" value="月のレートリミットの&lt;div&gt;80&amp;amp; / 100%&lt;/div&gt;&lt;div&gt;に達したタイミングで通知&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;" parent="1" source="aggregator" target="sns" edge="1">
+          <mxGeometry x="0.5088" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e7" value="100% ブロック" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" parent="1" source="aggregator" target="iam_deny" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e7" value="月のレートリミットに達した&lt;div&gt;IAM User に付与&lt;/div&gt;" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" parent="1" source="aggregator" target="iam_deny" edge="1">
+          <mxGeometry x="0.3171" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="470" y="270" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
         </mxCell>
         <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" parent="1" source="eb_reset" target="reset" edge="1">
           <mxGeometry relative="1" as="geometry" />
@@ -62,7 +71,21 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="e10" value="Deny 削除" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;" parent="1" source="reset" target="iam_deny" edge="1">
-          <mxGeometry relative="1" as="geometry" />
+          <mxGeometry x="0.1193" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1000" y="580" />
+            </Array>
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Z1Fb-K9sI5tcGLu9Mw_k-1" value="&lt;b&gt;Claude&lt;/b&gt;&lt;div&gt;&lt;b&gt;(CLI, VS Code)&lt;/b&gt;&lt;/div&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D97757;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="190" y="90" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Z1Fb-K9sI5tcGLu9Mw_k-3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="Z1Fb-K9sI5tcGLu9Mw_k-1" target="bedrock">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="140" y="130" as="sourcePoint" />
+            <mxPoint x="200" y="180" as="targetPoint" />
+          </mxGeometry>
         </mxCell>
       </root>
     </mxGraphModel>
